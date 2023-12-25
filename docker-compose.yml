@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  trans:
+    container_name: trans
+    image: haugene/transmission-openvpn
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - '/mnt/tbox:/data'
+      - './transmission-config/:/config'
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - OPENVPN_PROVIDER=PIA
+      - OPENVPN_CONFIG=switzerland,netherlands,poland
+      - LOCAL_NETWORK=10.0.0.0/24
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+    ports:
+      - '9091:9091'
+      - '9117:9117'
+    secrets:
+        - openvpn_creds
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    restart: unless-stopped
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    network_mode: "service:trans"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Oslo
+      #- RUN_OPTS=run options here #optional
+    volumes:
+      - ./JackettConfig:/config
+      - /mnt/tbox/torrents/blackhole:/downloads
+    restart: unless-stopped
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Oslo
+    volumes:
+      - ./SonarrConfig:/config
+      - /mnt/tbox:/data
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+
+secrets:
+  openvpn_creds:
+    file: ./openvpn_creds.env
